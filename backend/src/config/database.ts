@@ -3,7 +3,6 @@ import { config } from './env';
 import { logger } from '../utils/logger';
 
 // Create connection pool
-console.log(' config.db.password',  config.db.password)
 export const pool = mysql.createPool({
   host: config.db.host,
   port: config.db.port,
@@ -17,7 +16,6 @@ export const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
 });
 
-console.log('Database configuration:', pool);
 // Test database connection
 export async function testConnection(): Promise<boolean> {
   try {
