@@ -48,3 +48,7 @@ Thumbs.db
 
 # --- Turbo / Monorepo Tools ---
 .turbo/
+
+# --- Screenshots (optional - comment out if you want to track them) ---
+backend/screenshots/
+screenshots/

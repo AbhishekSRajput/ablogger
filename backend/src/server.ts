@@ -1,6 +1,5 @@
 import express, { Application } from 'express';
 import cors from 'cors';
-import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/env';
 import { testConnection } from './config/database';
@@ -50,7 +49,7 @@ app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),

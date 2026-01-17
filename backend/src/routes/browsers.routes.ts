@@ -8,9 +8,9 @@ const router = Router();
 router.use(authenticateToken);
 
 // GET / - list browsers
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const browsers = await browserService.getAllBrowsers();
+    const browsers = await browserService.list();
     res.json(browsers);
   } catch (error) {
     next(error);
@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const browserData = req.body;
-    const browserId = await browserService.createBrowser(browserData);
+    const browserId = await browserService.create(browserData);
     res.status(201).json({ browser_id: browserId, message: 'Browser created successfully' });
   } catch (error) {
     next(error);
@@ -32,7 +32,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const browserId = parseInt(req.params.id, 10);
-    const browser = await browserService.getBrowserById(browserId);
+    const browser = await browserService.get(browserId);
     res.json(browser);
   } catch (error) {
     next(error);
@@ -44,7 +44,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const browserId = parseInt(req.params.id, 10);
     const browserData = req.body;
-    await browserService.updateBrowser(browserId, browserData);
+    await browserService.update(browserId, browserData);
     res.json({ message: 'Browser updated successfully' });
   } catch (error) {
     next(error);
@@ -55,7 +55,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const browserId = parseInt(req.params.id, 10);
-    await browserService.deleteBrowser(browserId);
+    await browserService.delete(browserId);
     res.json({ message: 'Browser deleted successfully' });
   } catch (error) {
     next(error);
@@ -66,7 +66,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 router.patch('/:id/active', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const browserId = parseInt(req.params.id, 10);
-    await browserService.toggleBrowserActive(browserId);
+    await browserService.toggleActive(browserId);
     res.json({ message: 'Browser active status toggled successfully' });
   } catch (error) {
     next(error);

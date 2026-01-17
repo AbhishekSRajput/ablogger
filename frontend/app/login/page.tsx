@@ -24,9 +24,9 @@ export default function LoginPage() {
     try {
       const response = await authApi.login({ username, password });
       setToken(response.token);
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Invalid credentials. Please try again.';
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Invalid credentials. Please try again.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -88,3 +88,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

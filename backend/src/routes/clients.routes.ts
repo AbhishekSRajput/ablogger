@@ -8,9 +8,9 @@ const router = Router();
 router.use(authenticateToken);
 
 // GET / - list all clients
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const clients = await clientService.getAllClients();
+    const clients = await clientService.list();
     res.json(clients);
   } catch (error) {
     next(error);
@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const clientData = req.body;
-    const clientId = await clientService.createClient(clientData);
+    const clientId = await clientService.create(clientData);
     res.status(201).json({ client_id: clientId, message: 'Client created successfully' });
   } catch (error) {
     next(error);
@@ -32,7 +32,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const clientId = parseInt(req.params.id, 10);
-    const client = await clientService.getClientById(clientId);
+    const client = await clientService.get(clientId);
     res.json(client);
   } catch (error) {
     next(error);
@@ -44,7 +44,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const clientId = parseInt(req.params.id, 10);
     const clientData = req.body;
-    await clientService.updateClient(clientId, clientData);
+    await clientService.update(clientId, clientData);
     res.json({ message: 'Client updated successfully' });
   } catch (error) {
     next(error);
@@ -55,7 +55,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const clientId = parseInt(req.params.id, 10);
-    await clientService.deleteClient(clientId);
+    await clientService.delete(clientId);
     res.json({ message: 'Client deleted successfully' });
   } catch (error) {
     next(error);
@@ -66,7 +66,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 router.patch('/:id/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const clientId = parseInt(req.params.id, 10);
-    await clientService.toggleClientStatus(clientId);
+    await clientService.toggleStatus(clientId);
     res.json({ message: 'Client status toggled successfully' });
   } catch (error) {
     next(error);

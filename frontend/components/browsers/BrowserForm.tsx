@@ -163,9 +163,9 @@ export const BrowserForm: React.FC<BrowserFormProps> = ({
     };
 
     if (mode === 'create') {
-      createMutation.mutate(submitData);
+      createMutation.mutate(submitData as CreateBrowserConfigRequest);
     } else {
-      updateMutation.mutate(submitData);
+      updateMutation.mutate(submitData as UpdateBrowserConfigRequest);
     }
   };
 

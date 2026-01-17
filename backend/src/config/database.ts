@@ -3,6 +3,7 @@ import { config } from './env';
 import { logger } from '../utils/logger';
 
 // Create connection pool
+console.log(' config.db.password',  config.db.password)
 export const pool = mysql.createPool({
   host: config.db.host,
   port: config.db.port,
@@ -16,6 +17,7 @@ export const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
 });
 
+console.log('Database configuration:', pool);
 // Test database connection
 export async function testConnection(): Promise<boolean> {
   try {
@@ -32,10 +34,10 @@ export async function testConnection(): Promise<boolean> {
 // Helper function to execute queries with error handling
 export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
   try {
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.execute(sql, params || []);
     return rows as T[];
   } catch (error) {
-    logger.error('Database query error:', { sql, error });
+    logger.error('Database query error:', { sql, params, error });
     throw error;
   }
 }
@@ -49,10 +51,10 @@ export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T 
 // Helper for insert operations (returns insertId)
 export async function insert(sql: string, params?: any[]): Promise<number> {
   try {
-    const [result] = await pool.execute(sql, params);
+    const [result] = await pool.execute(sql, params || []);
     return (result as any).insertId;
   } catch (error) {
-    logger.error('Database insert error:', { sql, error });
+    logger.error('Database insert error:', { sql, params, error });
     throw error;
   }
 }
@@ -60,10 +62,10 @@ export async function insert(sql: string, params?: any[]): Promise<number> {
 // Helper for update/delete operations (returns affected rows)
 export async function execute(sql: string, params?: any[]): Promise<number> {
   try {
-    const [result] = await pool.execute(sql, params);
+    const [result] = await pool.execute(sql, params || []);
     return (result as any).affectedRows;
   } catch (error) {
-    logger.error('Database execute error:', { sql, error });
+    logger.error('Database execute error:', { sql, params, error });
     throw error;
   }
 }

@@ -8,10 +8,10 @@ const router = Router();
 router.use(authenticateToken);
 
 // POST /trigger - manual trigger
-router.post('/trigger', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/trigger', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await monitoringService.triggerMonitoringRun();
-    res.json(result);
+    const result = await monitoringService.runMonitoring('manual');
+    res.json({ run_id: result, message: 'Monitoring run triggered successfully' });
   } catch (error) {
     next(error);
   }
@@ -32,7 +32,7 @@ router.get('/runs', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/runs/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const runId = parseInt(req.params.id, 10);
-    const run = await monitoringService.getRunDetail(runId);
+    const run = await monitoringService.getRunById(runId);
     res.json(run);
   } catch (error) {
     next(error);

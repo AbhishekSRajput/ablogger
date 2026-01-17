@@ -202,7 +202,7 @@ export default function BrowsersPage() {
                           {browser.browserName}
                         </span>
                         {isDefaultBrowser(browser) && (
-                          <Star className="w-4 h-4 text-yellow-500 fill-current" title="Default configuration" />
+                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
                         )}
                       </div>
                     </td>

@@ -44,7 +44,7 @@ export class AuthService {
 
     const token = jwt.sign(payload, config.jwtSecret, {
       expiresIn: config.jwtExpiresIn,
-    });
+    } as jwt.SignOptions);
 
     return {
       token,

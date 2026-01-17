@@ -1,6 +1,5 @@
 import { query, queryOne, execute } from '../config/database';
 import {
-  DetectedFailure,
   FailureWithDetails,
   FailureFilters,
   UpdateFailureStatusRequest,
@@ -85,6 +84,8 @@ export class FailureService {
 
     // Get paginated results with details
     const offset = (page - 1) * limit;
+    // Use direct interpolation for LIMIT and OFFSET since they're validated integers
+    // to avoid MySQL prepared statement issues with complex queries
     const dataSql = `
       SELECT
         df.*,
@@ -101,10 +102,10 @@ export class FailureService {
       LEFT JOIN failure_screenshots fs ON df.failure_id = fs.failure_id
       ${whereClause}
       ORDER BY df.detected_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const failures = await query<FailureWithDetails>(dataSql, [...params, limit, offset]);
+    const failures = await query<FailureWithDetails>(dataSql, params.length > 0 ? params : undefined);
 
     return {
       failures,
@@ -255,6 +256,21 @@ export class FailureService {
       'SELECT DISTINCT browser_from_cookie FROM detected_failures WHERE browser_from_cookie IS NOT NULL ORDER BY browser_from_cookie'
     );
     return results.map((r) => r.browser_from_cookie);
+  }
+
+  async getScreenshotPath(failureId: number): Promise<string> {
+    const result = await queryOne<{ file_path: string }>(
+      `SELECT fs.file_path
+       FROM failure_screenshots fs
+       WHERE fs.failure_id = ?`,
+      [failureId]
+    );
+
+    if (!result || !result.file_path) {
+      throw new AppError('Screenshot not found', 404);
+    }
+
+    return result.file_path;
   }
 }
 

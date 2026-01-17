@@ -10,7 +10,7 @@ export function errorHandler(
   err: ApiError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal server error';
@@ -29,7 +29,7 @@ export function errorHandler(
   });
 }
 
-export function notFoundHandler(req: Request, res: Response): void {
+export function notFoundHandler(_req: Request, res: Response): void {
   res.status(404).json({ error: 'Route not found' });
 }
 

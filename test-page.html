@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A/B Test Error Tracking - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .button.danger {
+            background: #ef4444;
+        }
+        .button.danger:hover {
+            background: #dc2626;
+        }
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success-box {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 A/B Test Error Tracking - Test Page</h1>
+
+        <div class="info-box">
+            <strong>Purpose:</strong> This page demonstrates how to write A/B test errors to cookies for the monitoring system to detect.
+        </div>
+
+        <h2>Test Error Tracking</h2>
+        <p>Click the buttons below to simulate different types of A/B test errors:</p>
+
+        <button class="button" onclick="simulateJSError()">Simulate JavaScript Error</button>
+        <button class="button" onclick="simulateValidationError()">Simulate Validation Error</button>
+        <button class="button" onclick="simulateNetworkError()">Simulate Network Error</button>
+        <button class="button danger" onclick="clearErrorCookie()">Clear Error Cookie</button>
+
+        <div id="status"></div>
+
+        <h2>Current Cookie Value</h2>
+        <div class="code">
+            <pre id="cookieDisplay">No error cookie set</pre>
+        </div>
+
+        <h2>How It Works</h2>
+        <ol>
+            <li>Click one of the buttons above to simulate an error</li>
+            <li>The error data is written to a cookie named "ab_test_error"</li>
+            <li>The monitoring system will detect this cookie when it checks this URL</li>
+            <li>The error will appear in your admin dashboard</li>
+        </ol>
+
+        <h2>Integration Code</h2>
+        <p>Use this function in your actual A/B tests:</p>
+        <div class="code">
+            <pre>
+function trackABTestError(testId, variant, errorType, errorMessage) {
+  const errorData = {
+    test_id: testId,
+    variant: variant,
+    error_type: errorType,
+    error_message: errorMessage,
+    browser: navigator.userAgent,
+    timestamp: new Date().toISOString()
+  };
+
+  document.cookie = `ab_test_error=${encodeURIComponent(JSON.stringify(errorData))}; path=/; max-age=86400`;
+}
+
+// Usage example
+try {
+  // Your A/B test code
+  document.querySelector('.my-button').click();
+} catch (error) {
+  trackABTestError('homepage_cta_test', 'variant_b', 'js_error', error.message);
+}
+            </pre>
+        </div>
+    </div>
+
+    <script>
+        // Error tracking function
+        function trackABTestError(testId, variant, errorType, errorMessage) {
+            const errorData = {
+                test_id: testId,
+                variant: variant,
+                error_type: errorType,
+                error_message: errorMessage,
+                browser: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            };
+
+            // Write error to cookie
+            document.cookie = `ab_test_error=${encodeURIComponent(JSON.stringify(errorData))}; path=/; max-age=86400`;
+
+            showStatus('Error cookie set successfully! The monitoring system will detect this.', 'success');
+            displayCookie();
+        }
+
+        // Simulate different error types
+        function simulateJSError() {
+            trackABTestError(
+                'homepage_hero_test',
+                'variant_b',
+                'js_error',
+                'Cannot read property \'click\' of null - element not found in DOM'
+            );
+        }
+
+        function simulateValidationError() {
+            trackABTestError(
+                'signup_form_test',
+                'variant_a',
+                'validation_error',
+                'Email validation failed - invalid format on submit'
+            );
+        }
+
+        function simulateNetworkError() {
+            trackABTestError(
+                'checkout_flow_test',
+                'variant_c',
+                'network_error',
+                'Payment gateway timeout - request exceeded 30 seconds'
+            );
+        }
+
+        // Clear the error cookie
+        function clearErrorCookie() {
+            document.cookie = 'ab_test_error=; path=/; max-age=0';
+            showStatus('Error cookie cleared!', 'info');
+            displayCookie();
+        }
+
+        // Display current cookie value
+        function displayCookie() {
+            const cookies = document.cookie.split(';');
+            const errorCookie = cookies.find(c => c.trim().startsWith('ab_test_error='));
+
+            if (errorCookie) {
+                try {
+                    const value = decodeURIComponent(errorCookie.split('=')[1]);
+                    const parsed = JSON.parse(value);
+                    document.getElementById('cookieDisplay').textContent = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    document.getElementById('cookieDisplay').textContent = errorCookie;
+                }
+            } else {
+                document.getElementById('cookieDisplay').textContent = 'No error cookie set';
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            const className = type === 'success' ? 'success-box' : 'info-box';
+            statusDiv.innerHTML = `<div class="${className}">${message}</div>`;
+
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Display cookie on page load
+        displayCookie();
+    </script>
+</body>
+</html>

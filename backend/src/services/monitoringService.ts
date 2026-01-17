@@ -1,4 +1,4 @@
-import { query, queryOne, insert, execute, transaction } from '../config/database';
+import { query, queryOne, insert, execute } from '../config/database';
 import { browserCheckService } from './browserCheckService';
 import { MonitoredUrl, BrowserConfiguration, MonitoringRun } from '../types';
 import { config } from '../config/env';

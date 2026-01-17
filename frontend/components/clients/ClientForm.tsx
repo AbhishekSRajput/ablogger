@@ -119,9 +119,9 @@ export const ClientForm: React.FC<ClientFormProps> = ({
     };
 
     if (mode === 'create') {
-      createMutation.mutate(submitData);
+      createMutation.mutate(submitData as CreateClientRequest);
     } else {
-      updateMutation.mutate(submitData);
+      updateMutation.mutate(submitData as UpdateClientRequest);
     }
   };
 

@@ -11,16 +11,18 @@ router.use(authenticateToken);
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters = {
-      status: req.query.status as string | undefined,
+      resolution_status: req.query.status as string | undefined,
       test_id: req.query.test_id as string | undefined,
       error_type: req.query.error_type as string | undefined,
       browser: req.query.browser as string | undefined,
       client_id: req.query.client_id ? parseInt(req.query.client_id as string, 10) : undefined,
       url_id: req.query.url_id ? parseInt(req.query.url_id as string, 10) : undefined,
-      start_date: req.query.start_date as string | undefined,
-      end_date: req.query.end_date as string | undefined,
+      date_from: req.query.start_date as string | undefined,
+      date_to: req.query.end_date as string | undefined,
+      page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
+      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
     };
-    const failures = await failureService.getFailures(filters);
+    const failures = await failureService.list(filters);
     res.json(failures);
   } catch (error) {
     next(error);
@@ -28,7 +30,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // GET /filters/test-ids - get distinct test IDs
-router.get('/filters/test-ids', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/filters/test-ids', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const testIds = await failureService.getDistinctTestIds();
     res.json(testIds);
@@ -38,7 +40,7 @@ router.get('/filters/test-ids', async (req: Request, res: Response, next: NextFu
 });
 
 // GET /filters/error-types - get distinct error types
-router.get('/filters/error-types', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/filters/error-types', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const errorTypes = await failureService.getDistinctErrorTypes();
     res.json(errorTypes);
@@ -48,7 +50,7 @@ router.get('/filters/error-types', async (req: Request, res: Response, next: Nex
 });
 
 // GET /filters/browsers - get distinct browsers
-router.get('/filters/browsers', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/filters/browsers', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const browsers = await failureService.getDistinctBrowsers();
     res.json(browsers);
@@ -61,7 +63,7 @@ router.get('/filters/browsers', async (req: Request, res: Response, next: NextFu
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const failureId = parseInt(req.params.id, 10);
-    const failure = await failureService.getFailureById(failureId);
+    const failure = await failureService.get(failureId);
     res.json(failure);
   } catch (error) {
     next(error);
@@ -72,8 +74,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.patch('/:id/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const failureId = parseInt(req.params.id, 10);
-    const { status } = req.body;
-    await failureService.updateFailureStatus(failureId, status);
+    const { resolution_status, resolution_notes } = req.body;
+    const adminId = req.user?.admin_id || 0;
+    await failureService.updateStatus(failureId, { resolution_status, resolution_notes }, adminId);
     res.json({ message: 'Failure status updated successfully' });
   } catch (error) {
     next(error);
@@ -85,7 +88,7 @@ router.patch('/:id/notes', async (req: Request, res: Response, next: NextFunctio
   try {
     const failureId = parseInt(req.params.id, 10);
     const { notes } = req.body;
-    await failureService.updateFailureNotes(failureId, notes);
+    await failureService.updateNotes(failureId, notes);
     res.json({ message: 'Failure notes updated successfully' });
   } catch (error) {
     next(error);
@@ -95,8 +98,9 @@ router.patch('/:id/notes', async (req: Request, res: Response, next: NextFunctio
 // POST /bulk-status - bulk update status
 router.post('/bulk-status', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { failure_ids, status } = req.body;
-    await failureService.bulkUpdateStatus(failure_ids, status);
+    const { failure_ids, resolution_status } = req.body;
+    const adminId = req.user?.admin_id || 0;
+    await failureService.bulkUpdateStatus({ failure_ids, resolution_status }, adminId);
     res.json({ message: 'Failure statuses updated successfully' });
   } catch (error) {
     next(error);

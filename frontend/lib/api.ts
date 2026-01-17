@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { getToken, removeToken } from './auth';
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from './transforms';
 import type {
   LoginRequest,
   LoginResponse,
@@ -35,12 +36,16 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and transform data to snake_case
 api.interceptors.request.use(
   (config) => {
     const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Transform request data from camelCase to snake_case
+    if (config.data) {
+      config.data = transformKeysToSnakeCase(config.data);
     }
     return config;
   },
@@ -49,9 +54,15 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and transform data to camelCase
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Transform response data from snake_case to camelCase
+    if (response.data) {
+      response.data = transformKeysToCamelCase(response.data);
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       // Unauthorized - remove token and redirect to login
@@ -201,10 +212,10 @@ export const browsersApi = {
 
 export const failuresApi = {
   getFailures: async (filters?: FailureFilters): Promise<FailureWithDetails[]> => {
-    const response = await api.get<FailureWithDetails[]>('/failures', {
+    const response = await api.get<{ failures: FailureWithDetails[]; total: number; page: number; limit: number }>('/failures', {
       params: filters,
     });
-    return response.data;
+    return response.data.failures;
   },
 
   getFailure: async (id: number): Promise<FailureWithDetails> => {

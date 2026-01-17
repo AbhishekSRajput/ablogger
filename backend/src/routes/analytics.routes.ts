@@ -8,9 +8,9 @@ const router = Router();
 router.use(authenticateToken);
 
 // GET /overview - overview stats
-router.get('/overview', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/overview', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const overview = await analyticsService.getOverview();
+    const overview = await analyticsService.getOverviewStats();
     res.json(overview);
   } catch (error) {
     next(error);
@@ -29,7 +29,7 @@ router.get('/trends', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 // GET /by-browser - failures by browser
-router.get('/by-browser', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/by-browser', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await analyticsService.getFailuresByBrowser();
     res.json(data);
@@ -39,7 +39,7 @@ router.get('/by-browser', async (req: Request, res: Response, next: NextFunction
 });
 
 // GET /by-client - failures by client
-router.get('/by-client', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/by-client', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await analyticsService.getFailuresByClient();
     res.json(data);
@@ -49,7 +49,7 @@ router.get('/by-client', async (req: Request, res: Response, next: NextFunction)
 });
 
 // GET /by-error-type - failures by error type
-router.get('/by-error-type', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/by-error-type', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await analyticsService.getFailuresByErrorType();
     res.json(data);
@@ -59,7 +59,7 @@ router.get('/by-error-type', async (req: Request, res: Response, next: NextFunct
 });
 
 // GET /by-test-id - failures by test ID
-router.get('/by-test-id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/by-test-id', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await analyticsService.getFailuresByTestId();
     res.json(data);
