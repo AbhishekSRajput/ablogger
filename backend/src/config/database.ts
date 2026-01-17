@@ -29,10 +29,27 @@ export async function testConnection(): Promise<boolean> {
   }
 }
 
+/**
+ * Normalize parameters for MySQL prepared statements.
+ * MySQL2 prepared statements require specific types - this ensures
+ * numbers, strings, booleans, and nulls are handled correctly.
+ */
+function normalizeParams(params?: any[]): any[] {
+  if (!params) return [];
+  return params.map(param => {
+    if (param === undefined) return null;
+    if (param === null) return null;
+    if (typeof param === 'boolean') return param ? 1 : 0;
+    // Keep numbers as numbers, strings as strings
+    return param;
+  });
+}
+
 // Helper function to execute queries with error handling
+// Uses pool.query() instead of pool.execute() to properly handle LIMIT clauses with numeric params
 export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
   try {
-    const [rows] = await pool.execute(sql, params || []);
+    const [rows] = await pool.query(sql, normalizeParams(params));
     return rows as T[];
   } catch (error) {
     logger.error('Database query error:', { sql, params, error });
@@ -49,7 +66,7 @@ export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T 
 // Helper for insert operations (returns insertId)
 export async function insert(sql: string, params?: any[]): Promise<number> {
   try {
-    const [result] = await pool.execute(sql, params || []);
+    const [result] = await pool.execute(sql, normalizeParams(params));
     return (result as any).insertId;
   } catch (error) {
     logger.error('Database insert error:', { sql, params, error });
@@ -60,7 +77,7 @@ export async function insert(sql: string, params?: any[]): Promise<number> {
 // Helper for update/delete operations (returns affected rows)
 export async function execute(sql: string, params?: any[]): Promise<number> {
   try {
-    const [result] = await pool.execute(sql, params || []);
+    const [result] = await pool.execute(sql, normalizeParams(params));
     return (result as any).affectedRows;
   } catch (error) {
     logger.error('Database execute error:', { sql, params, error });

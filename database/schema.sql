@@ -66,6 +66,9 @@ CREATE TABLE monitoring_runs (
     completed_at TIMESTAMP NULL,
     total_urls_checked INT DEFAULT 0,
     total_errors_found INT DEFAULT 0,
+    total_checks_expected INT DEFAULT 0,
+    current_url VARCHAR(500) NULL,
+    current_browser VARCHAR(100) NULL,
     status ENUM('running', 'completed', 'failed') DEFAULT 'running',
     triggered_by ENUM('cron', 'manual') DEFAULT 'cron',
 
@@ -83,7 +86,7 @@ CREATE TABLE url_checks (
     page_load_time_ms INT,
     cookie_found BOOLEAN DEFAULT FALSE,
     error_detected BOOLEAN DEFAULT FALSE,
-    check_status ENUM('success', 'timeout', 'error') DEFAULT 'success',
+    check_status ENUM('success', 'timeout', 'error', 'unreachable') DEFAULT 'success',
     error_message TEXT,
 
     FOREIGN KEY (run_id) REFERENCES monitoring_runs(run_id) ON DELETE CASCADE,

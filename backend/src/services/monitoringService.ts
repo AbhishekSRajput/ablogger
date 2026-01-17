@@ -1,8 +1,15 @@
 import { query, queryOne, insert, execute } from '../config/database';
 import { browserCheckService } from './browserCheckService';
-import { MonitoredUrl, BrowserConfiguration, MonitoringRun } from '../types';
+import { MonitoredUrl, BrowserConfiguration, MonitoringRun, BrowserCheckResult } from '../types';
 import { config } from '../config/env';
 import { logger } from '../utils/logger';
+
+// Result type for performCheck
+interface CheckResult {
+  hasError: boolean;
+  isUnreachable: boolean;
+  checkStatus: BrowserCheckResult['checkStatus'];
+}
 
 export class MonitoringService {
   async runMonitoring(triggeredBy: 'cron' | 'manual' = 'cron'): Promise<number> {
@@ -48,17 +55,32 @@ export class MonitoringService {
       }> = [];
 
       for (const url of activeUrls) {
-        for (const config of browserConfigs) {
-          checkTasks.push({ url, config });
+        for (const bConfig of browserConfigs) {
+          checkTasks.push({ url, config: bConfig });
         }
       }
+
+      // Update run with total expected checks
+      await this.updateRunProgress(runId, 0, checkTasks.length, null, null);
 
       // Process checks with concurrency limit
       let totalChecked = 0;
       let totalErrorsFound = 0;
+      let totalUnreachable = 0;
+      let totalTimeouts = 0;
 
       for (let i = 0; i < checkTasks.length; i += config.maxConcurrentChecks) {
         const batch = checkTasks.slice(i, i + config.maxConcurrentChecks);
+
+        // Update current URL/browser being checked (use first item in batch)
+        const currentTask = batch[0];
+        await this.updateRunProgress(
+          runId,
+          totalChecked,
+          checkTasks.length,
+          currentTask.url.url,
+          currentTask.config.browser_name
+        );
 
         const batchResults = await Promise.allSettled(
           batch.map(task => this.performCheck(runId, task.url, task.config))
@@ -66,23 +88,36 @@ export class MonitoringService {
 
         // Count errors in this batch
         for (const result of batchResults) {
+          totalChecked++;
+
           if (result.status === 'fulfilled') {
-            totalChecked++;
-            if (result.value) {
+            const checkResult = result.value;
+            if (checkResult.hasError) {
               totalErrorsFound++;
             }
+            if (checkResult.isUnreachable) {
+              totalUnreachable++;
+            }
+            if (checkResult.checkStatus === 'timeout') {
+              totalTimeouts++;
+            }
           } else {
-            logger.error('Check failed:', result.reason);
+            logger.error('Check failed with exception:', result.reason);
+            // Count exceptions as errors
+            totalErrorsFound++;
           }
         }
 
-        logger.info(`Progress: ${totalChecked}/${checkTasks.length} checks completed`);
+        // Update progress after batch (include errors in the count for visibility)
+        await this.updateRunProgressWithErrors(runId, totalChecked, checkTasks.length, totalErrorsFound, null, null);
+
+        logger.info(`Progress: ${totalChecked}/${checkTasks.length} checks completed (${totalErrorsFound} errors, ${totalUnreachable} unreachable, ${totalTimeouts} timeouts)`);
       }
 
       // Complete the run
       await this.completeRun(runId, totalChecked, totalErrorsFound, 'completed');
 
-      logger.info(`Monitoring run ${runId} completed: ${totalChecked} checks, ${totalErrorsFound} errors found`);
+      logger.info(`Monitoring run ${runId} completed: ${totalChecked} checks, ${totalErrorsFound} errors found (${totalUnreachable} unreachable, ${totalTimeouts} timeouts)`);
       return runId;
     } catch (error) {
       logger.error('Monitoring run failed:', error);
@@ -91,11 +126,42 @@ export class MonitoringService {
     }
   }
 
+  private async updateRunProgress(
+    runId: number,
+    totalChecked: number,
+    totalExpected: number,
+    currentUrl: string | null,
+    currentBrowser: string | null
+  ): Promise<void> {
+    await execute(
+      `UPDATE monitoring_runs
+       SET total_urls_checked = ?, total_checks_expected = ?, current_url = ?, current_browser = ?
+       WHERE run_id = ?`,
+      [totalChecked, totalExpected, currentUrl, currentBrowser, runId]
+    );
+  }
+
+  private async updateRunProgressWithErrors(
+    runId: number,
+    totalChecked: number,
+    totalExpected: number,
+    totalErrors: number,
+    currentUrl: string | null,
+    currentBrowser: string | null
+  ): Promise<void> {
+    await execute(
+      `UPDATE monitoring_runs
+       SET total_urls_checked = ?, total_checks_expected = ?, total_errors_found = ?, current_url = ?, current_browser = ?
+       WHERE run_id = ?`,
+      [totalChecked, totalExpected, totalErrors, currentUrl, currentBrowser, runId]
+    );
+  }
+
   private async performCheck(
     runId: number,
     url: MonitoredUrl,
     browserConfig: BrowserConfiguration
-  ): Promise<boolean> {
+  ): Promise<CheckResult> {
     logger.debug(`Checking ${url.url} with ${browserConfig.browser_name} ${browserConfig.device_type}`);
 
     try {
@@ -125,7 +191,7 @@ export class MonitoringService {
         [url.url_id]
       );
 
-      // If error detected, create failure record
+      // If error detected (from cookie), create failure record
       if (result.errorDetected && result.errorData) {
         await this.recordFailure(
           checkId,
@@ -134,12 +200,29 @@ export class MonitoringService {
           result.errorData,
           result.screenshotPath
         );
-        return true; // Error found
+        return {
+          hasError: true,
+          isUnreachable: false,
+          checkStatus: result.checkStatus,
+        };
       }
 
-      return false; // No error
+      // Check if site was unreachable or had other errors
+      const isUnreachable = result.checkStatus === 'unreachable';
+      const hasError = !result.success || result.checkStatus === 'error' || result.checkStatus === 'timeout' || isUnreachable;
+
+      return {
+        hasError,
+        isUnreachable,
+        checkStatus: result.checkStatus,
+      };
     } catch (error) {
       logger.error(`Check failed for ${url.url}:`, error);
+
+      // Determine if this is an unreachable error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const isUnreachable = this.isUnreachableError(errorMessage);
+      const checkStatus = isUnreachable ? 'unreachable' : 'error';
 
       // Record failed check
       await insert(
@@ -150,13 +233,34 @@ export class MonitoringService {
           runId,
           url.url_id,
           browserConfig.config_id,
-          'error',
-          error instanceof Error ? error.message : 'Unknown error',
+          checkStatus,
+          errorMessage,
         ]
       );
 
-      return false;
+      return {
+        hasError: true,
+        isUnreachable,
+        checkStatus,
+      };
     }
+  }
+
+  private isUnreachableError(errorMessage: string): boolean {
+    const unreachablePatterns = [
+      'net::ERR_NAME_NOT_RESOLVED',
+      'net::ERR_CONNECTION_REFUSED',
+      'net::ERR_CONNECTION_RESET',
+      'net::ERR_CONNECTION_CLOSED',
+      'net::ERR_CONNECTION_TIMED_OUT',
+      'net::ERR_INTERNET_DISCONNECTED',
+      'net::ERR_ADDRESS_UNREACHABLE',
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ENOTFOUND',
+      'EHOSTUNREACH',
+    ];
+    return unreachablePatterns.some(pattern => errorMessage.includes(pattern));
   }
 
   private async recordFailure(
@@ -170,9 +274,13 @@ export class MonitoringService {
       // Parse timestamp from cookie
       let timestampFromCookie: Date | null = null;
       try {
-        timestampFromCookie = new Date(errorData.timestamp);
+        const parsed = new Date(errorData.timestamp);
+        // Validate the parsed date is valid
+        if (!isNaN(parsed.getTime())) {
+          timestampFromCookie = parsed;
+        }
       } catch {
-        // Invalid timestamp, use current time
+        // Invalid timestamp, leave as null
         timestampFromCookie = null;
       }
 
@@ -216,9 +324,10 @@ export class MonitoringService {
     totalErrorsFound: number,
     status: 'completed' | 'failed'
   ): Promise<void> {
+    // Clear current URL/browser when completing
     await execute(
       `UPDATE monitoring_runs
-       SET completed_at = NOW(), total_urls_checked = ?, total_errors_found = ?, status = ?
+       SET completed_at = NOW(), total_urls_checked = ?, total_errors_found = ?, status = ?, current_url = NULL, current_browser = NULL
        WHERE run_id = ?`,
       [totalChecked, totalErrorsFound, status, runId]
     );
@@ -240,6 +349,12 @@ export class MonitoringService {
     );
   }
 
+  async getRunningRun(): Promise<MonitoringRun | null> {
+    return await queryOne<MonitoringRun>(
+      `SELECT * FROM monitoring_runs WHERE status = 'running' ORDER BY started_at DESC LIMIT 1`
+    );
+  }
+
   async getRunChecks(runId: number) {
     return await query(`
       SELECT
@@ -256,6 +371,40 @@ export class MonitoringService {
       WHERE uc.run_id = ?
       ORDER BY uc.checked_at DESC
     `, [runId]);
+  }
+
+  async cancelRun(runId: number): Promise<boolean> {
+    const run = await this.getRunById(runId);
+
+    if (!run) {
+      return false;
+    }
+
+    if (run.status !== 'running') {
+      return false;
+    }
+
+    // Mark the run as cancelled
+    await execute(
+      `UPDATE monitoring_runs
+       SET completed_at = NOW(), status = 'cancelled', current_url = NULL, current_browser = NULL
+       WHERE run_id = ? AND status = 'running'`,
+      [runId]
+    );
+
+    logger.info(`Monitoring run ${runId} cancelled`);
+    return true;
+  }
+
+  async cancelRunningRun(): Promise<{ cancelled: boolean; runId: number | null }> {
+    const runningRun = await this.getRunningRun();
+
+    if (!runningRun) {
+      return { cancelled: false, runId: null };
+    }
+
+    const success = await this.cancelRun(runningRun.run_id);
+    return { cancelled: success, runId: runningRun.run_id };
   }
 }
 

@@ -49,8 +49,27 @@ export interface MonitoringRun {
   completedAt: Date | null;
   totalUrlsChecked: number;
   totalErrorsFound: number;
+  totalChecksExpected: number;
+  currentUrl: string | null;
+  currentBrowser: string | null;
   status: 'running' | 'completed' | 'failed';
   triggeredBy: 'cron' | 'manual';
+}
+
+export interface MonitoringProgress {
+  runId: number;
+  totalChecked: number;
+  totalExpected: number;
+  percentage: number;
+  currentUrl: string | null;
+  currentBrowser: string | null;
+  startedAt: Date;
+  errorsFound: number;
+}
+
+export interface MonitoringProgressResponse {
+  running: boolean;
+  progress: MonitoringProgress | null;
 }
 
 export interface UrlCheck {
@@ -62,8 +81,17 @@ export interface UrlCheck {
   pageLoadTimeMs: number | null;
   cookieFound: boolean;
   errorDetected: boolean;
-  checkStatus: 'success' | 'timeout' | 'error';
+  checkStatus: 'success' | 'timeout' | 'error' | 'unreachable';
   errorMessage: string | null;
+}
+
+// Extended UrlCheck with joined data from related tables
+export interface UrlCheckWithDetails extends UrlCheck {
+  url: string;
+  urlLabel: string | null;
+  clientName: string;
+  browserName: string;
+  deviceType: 'desktop' | 'mobile' | 'tablet';
 }
 
 export interface DetectedFailure {

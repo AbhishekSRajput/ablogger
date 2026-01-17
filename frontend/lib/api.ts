@@ -15,14 +15,14 @@ import type {
   BrowserConfiguration,
   CreateBrowserConfigRequest,
   UpdateBrowserConfigRequest,
-  DetectedFailure,
   FailureWithDetails,
   FailureFilters,
   UpdateFailureStatusRequest,
   BulkUpdateFailuresRequest,
   MonitoringRun,
   MonitoringRunWithDetails,
-  UrlCheck,
+  MonitoringProgressResponse,
+  UrlCheckWithDetails,
   OverviewStats,
   TrendData,
   GroupedCount,
@@ -280,8 +280,13 @@ export const monitoringApi = {
     return response.data;
   },
 
-  getRunChecks: async (runId: number): Promise<UrlCheck[]> => {
-    const response = await api.get<UrlCheck[]>(`/monitoring/runs/${runId}/checks`);
+  getRunChecks: async (runId: number): Promise<UrlCheckWithDetails[]> => {
+    const response = await api.get<UrlCheckWithDetails[]>(`/monitoring/runs/${runId}/checks`);
+    return response.data;
+  },
+
+  getProgress: async (): Promise<MonitoringProgressResponse> => {
+    const response = await api.get<MonitoringProgressResponse>('/monitoring/progress');
     return response.data;
   },
 };

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { monitoringApi } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { RunHistory } from '@/components/monitoring/RunHistory';
+import { LiveProgress } from '@/components/monitoring/LiveProgress';
 import { Play, RefreshCw, AlertCircle } from 'lucide-react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 
@@ -140,6 +141,9 @@ export default function MonitoringPage() {
           </div>
         </div>
       )}
+
+      {/* Live Progress */}
+      {hasRunningJob && <LiveProgress />}
 
       {/* Run History */}
       <RunHistory runs={currentRuns} isLoading={isLoading} />

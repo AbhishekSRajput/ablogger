@@ -28,6 +28,9 @@ export const config = {
   maxConcurrentChecks: parseInt(process.env.MAX_CONCURRENT_CHECKS || '5', 10),
   cookieName: process.env.COOKIE_NAME || 'ab_test_error',
   pageSize: parseInt(process.env.PAGE_SIZE || '50', 10),
+  maxRetries: parseInt(process.env.MAX_RETRIES || '3', 10),
+  retryDelayMs: parseInt(process.env.RETRY_DELAY_MS || '1000', 10),
+  maxErrorMessageLength: parseInt(process.env.MAX_ERROR_MESSAGE_LENGTH || '2000', 10),
 
   // CORS
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',

@@ -49,6 +49,9 @@ export interface MonitoringRun {
   completed_at: Date | null;
   total_urls_checked: number;
   total_errors_found: number;
+  total_checks_expected: number;
+  current_url: string | null;
+  current_browser: string | null;
   status: 'running' | 'completed' | 'failed';
   triggered_by: 'cron' | 'manual';
 }
@@ -62,7 +65,7 @@ export interface UrlCheck {
   page_load_time_ms: number | null;
   cookie_found: boolean;
   error_detected: boolean;
-  check_status: 'success' | 'timeout' | 'error';
+  check_status: 'success' | 'timeout' | 'error' | 'unreachable';
   error_message: string | null;
 }
 
@@ -91,7 +94,7 @@ export interface FailureScreenshot {
   captured_at: Date;
 }
 
-// Cookie error data format
+// Cookie error data format (full/decoded)
 export interface ABTestErrorCookie {
   test_id: string;
   variant: string;
@@ -100,6 +103,41 @@ export interface ABTestErrorCookie {
   browser: string;
   timestamp: string;
 }
+
+// Compact cookie format (minimized for size)
+// Keys: t=test_id, v=variant, e=error_type, m=message, b=browser, ts=timestamp
+export interface ABTestErrorCookieCompact {
+  t: string;   // test_id
+  v: string;   // variant
+  e: string;   // error_type code (see ERROR_TYPE_CODES)
+  m: string;   // error_message (truncated)
+  b: string;   // browser code (see BROWSER_CODES)
+  ts: number;  // timestamp as unix epoch (seconds)
+}
+
+// Error type codes for compact format
+export const ERROR_TYPE_CODES: Record<string, string> = {
+  'JS': 'javascript_error',
+  'NW': 'network_error',
+  'TO': 'timeout',
+  'RN': 'render_error',
+  'AP': 'api_error',
+  'VL': 'validation_error',
+  'AU': 'auth_error',
+  'CF': 'config_error',
+  'UK': 'unknown',
+};
+
+// Browser codes for compact format
+export const BROWSER_CODES: Record<string, string> = {
+  'CH': 'chrome',
+  'FF': 'firefox',
+  'SF': 'safari',
+  'ED': 'edge',
+  'OP': 'opera',
+  'BR': 'brave',
+  'UK': 'unknown',
+};
 
 // Request/Response types
 export interface LoginRequest {
@@ -203,7 +241,7 @@ export interface BrowserCheckResult {
   errorDetected: boolean;
   errorData: ABTestErrorCookie | null;
   screenshotPath: string | null;
-  checkStatus: 'success' | 'timeout' | 'error';
+  checkStatus: 'success' | 'timeout' | 'error' | 'unreachable';
   errorMessage: string | null;
 }
 
